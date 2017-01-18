@@ -76,67 +76,57 @@ basic_send_test_() ->
 parallel_send_test_() ->
     with_setup(fun(Socket) ->
         %% build a bunch of messages to send
-        MsgCount = 100,
-        MsgList = lists:map(
+        ProcessCount = 100,
+        Messages = lists:map(
             fun(I) ->
                 BytesCount = 20 + rand:uniform(20),
-                {I, base64:encode(crypto:strong_rand_bytes(BytesCount))}
+                RandomBin = base64:encode(crypto:strong_rand_bytes(BytesCount)),
+                IOListMsg = [erlang:integer_to_list(I), " ", RandomBin],
+                {I, IOListMsg}
             end,
-            lists:seq(1, MsgCount)
+            lists:seq(1, ProcessCount)
         ),
         Self = self(),
 
         %% now send each of these messages from a different process, after
         %% sleeping a random amount of time
-        lists:foreach(
-            fun({I, Message}) ->
+        {ExpectedUdpMessages, ExpectedOtherMessages} =
+        lists:foldl(
+            fun({I, BaseIOListMsg}, {CurrentExpectedUdpMessages, CurrentExpectedOtherMessages}) ->
+                %% let's create the 3 messages we're actually going to send over
+                %% UDP, of the form "1|2|3 processId randomBin"
+                IOListMsgs = [[erlang:integer_to_list(Counter), " ", BaseIOListMsg]
+                              || Counter <- [1, 2]],
+                OkMessage = {I, ok},
+
                 erlang:spawn(fun() ->
-                    RawMessage = [erlang:integer_to_list(I), " ", Message],
-                    %% we send the message twice
-                    timer:sleep(rand:uniform(50)),
-                    ok = send(RawMessage),
-                    timer:sleep(rand:uniform(50)),
-                    ok = send(RawMessage),
+                    lists:foreach(
+                        fun(IOListMsg) ->
+                            timer:sleep(rand:uniform(50)),
+                            ok = send(IOListMsg)
+                        end,
+                        IOListMsgs
+                    ),
                     %% then send a simple `ok' to make sure this process didn't
                     %% crash
-                    Self ! {I, ok}
+                    Self ! OkMessage
                 end),
-                ok
+
+                StringMsgs = [erlang:binary_to_list(erlang:iolist_to_binary(IOListMsg))
+                              || IOListMsg <- IOListMsgs],
+                {StringMsgs ++ CurrentExpectedUdpMessages,
+                 [OkMessage | CurrentExpectedOtherMessages]}
             end,
-            MsgList
+            {[], []},
+            Messages
         ),
 
         %% now let's receive all these
-        {UdpMessages, OtherMessages} = receive_messages(Socket, 3 * MsgCount),
-
-        ParsedUdpMessages = lists:foldl(
-            fun(RawMessage, Acc) ->
-                [IBin, Message] = binary:split(erlang:list_to_binary(RawMessage), <<" ">>),
-                I = erlang:binary_to_integer(IBin),
-                maps:update_with(
-                    I,
-                    fun({PreviousCount, SameMessage}) when SameMessage =:= Message ->
-                        {PreviousCount + 1, Message}
-                    end,
-                    {1, Message},
-                    Acc)
-            end,
-            #{},
-            UdpMessages
-        ),
-        ExpectedParsedUdpMessages = lists:foldl(
-            fun({I, Message}, Acc) ->
-                maps:put(I, {2, Message}, Acc)
-            end,
-            #{},
-            MsgList
-        ),
-
-        ExpectedSortedOtherMessages = [{I, ok} || I <- lists:seq(1, MsgCount)],
+        {ActualUdpMessages, ActualOtherMessages} = receive_messages(Socket, 4 * ProcessCount),
 
         [
-         ?_assertEqual(ExpectedParsedUdpMessages, ParsedUdpMessages),
-         ?_assertEqual(lists:sort(OtherMessages), ExpectedSortedOtherMessages)
+         assert_sets_equal(udp_messages, ExpectedUdpMessages, ActualUdpMessages),
+         assert_sets_equal(other_messages, ExpectedOtherMessages, ActualOtherMessages)
         ]
     end).
 
@@ -166,6 +156,18 @@ receive_messages(Socket, ExpectedCount, CurrentCount, {UdpMessages, OtherMessage
     OtherMessage ->
         NewMessages = {UdpMessages, [OtherMessage | OtherMessages]},
         receive_messages(Socket, ExpectedCount, CurrentCount + 1, NewMessages)
-    after 500 -> Messages end.
+    after 1000 -> Messages end.
+
+assert_sets_equal(Label, Expected, Actual) ->
+    ExpectedSet = sets:from_list(Expected),
+    ActualSet = sets:from_list(Actual),
+
+    MissingItems = sets:subtract(ExpectedSet, ActualSet),
+    ExtraItems = sets:subtract(ActualSet, ExpectedSet),
+
+    [
+     ?_assertEqual({Label, missing, []}, {Label, missing, sets:to_list(MissingItems)}),
+     ?_assertEqual({Label, extra, []}, {Label, extra, sets:to_list(ExtraItems)})
+    ].
 
 -endif.
