@@ -28,22 +28,30 @@ send_event(Title, Text, Type, Priority, Tags) ->
 
 -record(config, {
     enabled :: boolean(),
-    prefix  :: string(),
-    tags    :: #{}
+    prefix  :: string() | undefined,
+    tags    :: #{} | undefined
 }).
 
 config() ->
     case erlang:get(?MODULE) of
         undefined ->
-            Config = #config{
-                enabled = stillir:get_config(edogstatsd, send_metrics),
-                prefix  = stillir:get_config(edogstatsd, global_prefix),
-                tags    = stillir:get_config(edogstatsd, global_tags)
-            },
+            Config = new_config(),
             erlang:put(?MODULE, Config),
             Config;
         Config ->
             Config
+    end.
+
+new_config() ->
+    case stillir:get_config(edogstatsd, send_metrics, false) of
+        true ->
+            #config{
+                enabled = true,
+                prefix  = stillir:get_config(edogstatsd, global_prefix, ""),
+                tags    = stillir:get_config(edogstatsd, global_tags, #{})
+            };
+        _Else ->
+            #config{enabled = false}
     end.
 
 if_enabled(Fun) ->
