@@ -1,3 +1,5 @@
+[![Build Status](https://circleci.com/gh/wk8/erlang-dogstatsd.svg?&style=shield&circle-token=998f46856568b9b3c610922986bfb3a655c5ba3f)](https://circleci.com/gh/wk8/erlang-dogstatsd/tree/master)
+
 # Another edogstatsd client for Erlang
 
 edogstatsd is Datadog's extension of StatsD. It adds tags to the metrics.
