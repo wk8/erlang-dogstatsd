@@ -204,6 +204,12 @@ else
 		@echo "now try your build again"
 endif
 
+base-plt:
+	# this is needed so that circle can generate the base PLT separately
+	# and we can't rely on make to decide if the target is up-to-date since
+	# base-plt is phony
+	[ -r $(BASE_PLT) ] || $(MAKE) $(BASE_PLT)
+
 doc:
 	@$(REBARC) doc skip_deps=true
 

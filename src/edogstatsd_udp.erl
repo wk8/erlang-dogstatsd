@@ -76,9 +76,14 @@ basic_send_test_() ->
 parallel_send_test_() ->
     with_setup(fun(Socket) ->
         %% build a bunch of messages to send
-        MsgCount = 1000,
-        MsgList = [{I, base64:encode(crypto:strong_rand_bytes(32))}
-                   || I <- lists:seq(1, MsgCount)],
+        MsgCount = 100,
+        MsgList = lists:map(
+            fun(I) ->
+                BytesCount = 20 + rand:uniform(20),
+                {I, base64:encode(crypto:strong_rand_bytes(BytesCount))}
+            end,
+            lists:seq(1, MsgCount)
+        ),
         Self = self(),
 
         %% now send each of these messages from a different process, after

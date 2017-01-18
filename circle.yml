@@ -1,0 +1,32 @@
+machine:
+  environment:
+    ERL_VERSION: 19.2
+    KERL_VERSION: 1.1.1
+    KERL_SHA256: d2ed3a0977f35d092dc3df1c4b1ae403701cc04732564e42e403cdc737048c44
+
+dependencies:
+  cache_directories:
+    - '~/.kerl'
+    - '~/.erlangs'
+    - '~/.concrete_dialyzer_plts'
+
+  pre:
+    # install erlang, using kerl (which makes it easy to cache for subsequent
+    # runs)
+    - 'if [ -x ~/.kerl/kerl ] && [[ $(sha256sum ~/.kerl/kerl | cut -f 1 -d " ") == "$KERL_SHA256" ]]; then echo "Kerl already up to date"; else echo "Updating Kerl to $KERL_VERSION" && mkdir -p ~/.kerl && wget -O ~/.kerl/kerl https://raw.githubusercontent.com/yrashk/kerl/$KERL_VERSION/kerl && chmod +x ~/.kerl/kerl; fi'
+    - '[ -d ~/.kerl/builds/$ERL_VERSION ] || (~/.kerl/kerl update releases && ~/.kerl/kerl build $ERL_VERSION $ERL_VERSION)'
+    - '[ -d ~/.erlangs/$ERL_VERSION ] || ~/.kerl/kerl install $ERL_VERSION ~/.erlangs/$ERL_VERSION'
+
+    # generate the base PLT
+    - '. ~/.erlangs/$ERL_VERSION/activate && cd ~/erlang-dogstatsd && make base-plt'
+    # we only keep the 5 most recent base PLTs
+    # that ensures both that the cache won't get crazy big, and that whenever
+    # the list of OTP deps included in the PLT is changed, the relevant PLTs
+    # stay around during the transition period (kudos to circle-CI for properly
+    # preserving timestamps in the cache)
+    - 'if [ -d ~/.concrete_dialyzer_plts ]; then cd ~/.concrete_dialyzer_plts; OLD_PLTS=$(ls -tr | head -n -5); [ "$OLD_PLTS" ] && rm -fv $OLD_PLTS || true; fi'
+
+test:
+  override:
+    - '. ~/.erlangs/$ERL_VERSION/activate && make get-rebar all_but_dialyzer'
+    - '. ~/.erlangs/$ERL_VERSION/activate && make get-rebar dialyzer'
