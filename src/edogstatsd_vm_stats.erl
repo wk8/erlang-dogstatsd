@@ -46,7 +46,7 @@
 
 -record(state, {key :: string(),
                 sched_time :: enabled | disabled | unavailable,
-                prev_sched :: [{integer(), integer(), integer()}],
+                prev_sched :: [{integer(), integer(), integer()}] | undefined,
                 timer_ref :: reference(),
                 delay :: integer(), % milliseconds
                 prev_io :: {In::integer(), Out::integer()},
@@ -62,11 +62,11 @@ start_link(BaseKey) ->
 
 %%% INTERNAL EXPORTS
 init(BaseKey) ->
-    Delay = stillir:get_config(dogstatsd, vm_stats_delay),
+    Delay = stillir:get_config(edogstatsd, vm_stats_delay),
     Ref = erlang:start_timer(Delay, self(), ?TIMER_MSG),
     {{input,In},{output,Out}} = erlang:statistics(io),
     PrevGC = erlang:statistics(garbage_collection),
-    case {sched_time_available(), stillir:get_config(dogstatsd, vm_stats_scheduler)} of
+    case {sched_time_available(), stillir:get_config(edogstatsd, vm_stats_scheduler)} of
         {true, true} ->
             {ok, #state{key = [BaseKey,$.],
                         timer_ref = Ref,
@@ -192,4 +192,4 @@ sched_time_available() ->
 
 -spec base_key() -> term().
 base_key() ->
-    stillir:get_config(dogstatsd, vm_stats_base_key).
+    stillir:get_config(edogstatsd, vm_stats_base_key).

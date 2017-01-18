@@ -97,8 +97,7 @@ static ERL_NIF_TERM edogstatsd_udp_send(ErlNifEnv* env, int argc, const ERL_NIF_
       if (sent_count == buffer->size) {
         return atom_ok;
       } else {
-        // TODO wkpo
-        return enif_make_tuple4(env, atom_error, atom_send_failed, sent_count, atom_send_failed);
+        return enif_make_tuple4(env, atom_error, atom_send_failed, sent_count, buffer->size);
       };
     case INIT_FAILED:
       return enif_make_tuple2(env, atom_error, atom_init_failed);

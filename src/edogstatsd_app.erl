@@ -22,11 +22,11 @@ configure() ->
              ,{vm_stats_base_key, "VM_STATS_BASE_KEY", [{default, "erlang.vm"}]}
              ],
     Config1 = read_app_config(Config),
-    ok = stillir:set_config(dogstatsd, Config1).
+    ok = stillir:set_config(edogstatsd, Config1).
 
 read_app_config(Config) ->
     lists:map(fun ({AppVar, EnvVar, Opts0}) ->
-                      Opts1 = case application:get_env(dogstatsd, AppVar) of
+                      Opts1 = case application:get_env(edogstatsd, AppVar) of
                                   {ok, Value} ->
                                       lists:keystore(default, 1, Opts0, {default, Value});
                                   undefined ->
@@ -121,22 +121,33 @@ supervisor_test_() ->
       ?_assertMatch({ok,_Pid}, edogstatsd_sup:start_link())
      ]}.
 
-% application_test_() -> %% TODO wkpo
-%     {setup,
-%      fun () ->
-%              meck:new(gen_udp, [unstick]),
-%              meck:expect(gen_udp, send, fun (_Socket, _Address, _Port, _Packet) -> ok end),
-%              meck:expect(gen_udp, open, fun (_Port) -> {ok, fake_socket} end),
-%              application:ensure_all_started(edogstatsd)
-%      end,
-%      fun (_) ->
-%              meck:unload(gen_udp),
-%              application:stop(worker_pool)
-%      end,
-%      [
-%       ?_assertMatch(ok, edogstatsd:gauge("test", 1))
-%      ,?_assert(meck:validate(gen_udp))
-%      ,?_assert(meck:called(gen_udp, send, '_'))
-%      ]}.
+application_test_() ->
+    {setup,
+     fun () ->
+         application:ensure_all_started(edogstatsd),
+         {ok, Socket} = gen_udp:open(8125, [{active, true}]),
+         Socket
+     end,
+     fun (Socket) ->
+         ok = gen_udp:close(Socket)
+     end,
+     fun(Socket) ->
+         MetricResult = edogstatsd:gauge("test", 1),
+         MetricMessage = receive
+             {udp, Socket, {127, 0, 0, 1}, _Port1, Msg1} -> Msg1
+             after 200 -> metric_time_out end,
+
+         EventResult = edogstatsd:event("my_title", "my_text"),
+         EventMessage = receive
+             {udp, Socket, {127, 0, 0, 1}, _Port2, Msg2} -> Msg2
+             after 200 -> event_time_out end,
+
+         [
+             ?_assertEqual(ok, MetricResult),
+             ?_assertEqual("test:1.000|g|@1.00", MetricMessage),
+             ?_assertEqual(ok, EventResult),
+             ?_assertEqual("_e{8,7}:my_title|my_text|t:info|p:normal", EventMessage)
+         ]
+     end}.
 
 -endif.

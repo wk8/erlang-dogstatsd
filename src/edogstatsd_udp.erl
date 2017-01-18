@@ -2,7 +2,9 @@
 
 -export([
     init/2,
-    send/1
+    send/1,
+    send/2,
+    buffer/0
 ]).
 
 -on_load(init/0).
@@ -14,7 +16,15 @@ init(_ServerIpString, _ServerPort) -> ?NOT_LOADED.
 send(Line) ->
     case buffer() of
         {ok, Buffer} -> send(Buffer, Line);
-        error -> {error, could_not_allocate_buffer}
+        {error, _Why} = Error -> Error
+    end.
+
+send(_Buffer, _Line) -> ?NOT_LOADED.
+
+buffer() ->
+    case erlang:get(?MODULE) of
+        undefined -> try_to_allocate_new_buffer();
+        Buffer -> {ok, Buffer}
     end.
 
 %%% Private helpers
@@ -30,20 +40,17 @@ init() ->
     end,
     erlang:load_nif(filename:join(PrivDir, "edogstatsd"), 0).
 
-buffer() ->
-    case erlang:get(?MODULE) of
-        {ok, Buffer} ->
-            {ok, Buffer};
-        _Else ->
-            Buffer = new_buffer(),
-            erlang:put(?MODULE, Buffer),
-            Buffer
-    end.
-
 not_loaded(Line) ->
     erlang:nif_error({not_loaded, [{module, ?MODULE}, {line, Line}]}).
 
-send(_Buffer, _Line) -> ?NOT_LOADED.
+try_to_allocate_new_buffer() ->
+    case new_buffer() of
+        {ok, Buffer} = Success ->
+            erlang:put(?MODULE, Buffer),
+            Success;
+        error ->
+            {error, could_not_allocate_buffer}
+    end.
 
 new_buffer() -> ?NOT_LOADED.
 

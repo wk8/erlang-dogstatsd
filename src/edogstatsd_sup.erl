@@ -7,12 +7,12 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init(_Args) ->
-    ok = edogstatsd_udp:init(stillir:get_config(dogstatsd, agent_address),
-                             stillir:get_config(dogstatsd, agent_port)),
+    ok = edogstatsd_udp:init(stillir:get_config(edogstatsd, agent_address),
+                             stillir:get_config(edogstatsd, agent_port)),
 
-    Children = case stillir:get_config(dogstatsd, vm_stats) of
+    Children = case stillir:get_config(edogstatsd, vm_stats) of
         true -> [#{
-                   id => dogstatsd_vm_stats,
+                   id => edogstatsd_vm_stats,
                    start => {edogstatsd_vm_stats, start_link, []},
                    restart => permanent,
                    shutdown => brutal_kill
