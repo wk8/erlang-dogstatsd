@@ -18,7 +18,7 @@ dependencies:
     - '[ -d ~/.erlangs/$ERL_VERSION ] || ~/.kerl/kerl install $ERL_VERSION ~/.erlangs/$ERL_VERSION'
 
     # generate the base PLT
-    - '. ~/.erlangs/$ERL_VERSION/activate && cd ~/erlang-dogstatsd && make base-plt'
+    - 'mkdir -p ~/.concrete_dialyzer_plts && . ~/.erlangs/$ERL_VERSION/activate && cd ~/erlang-dogstatsd && make base-plt'
     # we only keep the 5 most recent base PLTs
     # that ensures both that the cache won't get crazy big, and that whenever
     # the list of OTP deps included in the PLT is changed, the relevant PLTs

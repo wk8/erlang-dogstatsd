@@ -112,18 +112,9 @@ else
 BASE_PLT_ID := $(word 1, $(shell echo $(ERLANG_DIALYZER_APPS) | $(MD5_BIN)))
 endif
 
-ifeq ($(TRAVIS),true)
-## If we're running on travis, pull the plt from S3
-## We got them from https://github.com/esl/erlang-plts
-## To add to the collection make sure they're public and match the erlang version
-## reported by make otp_version
-## s3cmd put --acl-public --guess-mime-type <FILENAME> s3://concrete-plts
-
-BASE_PLT := travis-erlang-$(TRAVIS_OTP_RELEASE).plt
-BASE_PLT_URL := http://s3.amazonaws.com/concrete-plts/$(BASE_PLT)
-else
-BASE_PLT := ~/.concrete_dialyzer_plt_$(BASE_PLT_ID)_$(ERLANG_VERSION).plt
-endif
+# we put PLTs in a dir to make it easy for Circle to cache them
+BASE_PLT_DIR := ~/.concrete_dialyzer_plts
+BASE_PLT := $(BASE_PLT_DIR)/$(BASE_PLT_ID)_$(ERLANG_VERSION).plt
 
 ## The recursive call to $(MAKE) is here to make sure that we use a verion of
 ## DIALYZER_DEPS that's built after $(DEPS) is made. If we didn't do this,
