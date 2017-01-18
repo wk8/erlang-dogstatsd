@@ -6,7 +6,8 @@
   {registered, []},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+                  stillir
                  ]},
   %% uncomment if this is an active application
   {mod, { edogstatsd_app, []}},
