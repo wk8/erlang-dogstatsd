@@ -1,0 +1,19 @@
+%% -*- mode: erlang -*-
+{application, edogstatsd,
+ [
+  {description, "An erlang client for Datadog's dogstatsd"},
+  {vsn, "0.0.1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  %% uncomment if this is an active application
+  {mod, { edogstatsd_app, []}},
+  {env, []},
+
+  {maintainers, ["Jean Rouge <jer329@cornell.edu>"]},
+  {licenses, ["LAGPL"]},
+  {links, [{"GitHub", "https://github.com/wk8/erlang-dogstatsd"}]}
+ ]}.
+%% vim: set filetype=erlang tabstop=2

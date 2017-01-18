@@ -1,0 +1,11 @@
+/ebin/*
+*.beam
+/deps/*
+/rel/edogstatsd
+/.concrete/DEV_MODE
+/deps.plt
+/.eunit/
+/.rebar/
+/c_src/*.d
+/c_src/*.o
+/priv/*.o
