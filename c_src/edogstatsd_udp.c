@@ -102,6 +102,7 @@ static ERL_NIF_TERM edogstatsd_udp_send(ErlNifEnv* env, int argc, const ERL_NIF_
     case INIT_FAILED:
       return enif_make_tuple2(env, atom_error, atom_init_failed);
     case INIT_NOT_DONE_YET:
+    default:
       return enif_make_badarg(env);
   }
 }

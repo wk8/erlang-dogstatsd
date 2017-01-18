@@ -161,6 +161,6 @@ receive_messages(Socket, ExpectedCount, CurrentCount, {UdpMessages, OtherMessage
     OtherMessage ->
         NewMessages = {UdpMessages, [OtherMessage | OtherMessages]},
         receive_messages(Socket, ExpectedCount, CurrentCount + 1, NewMessages)
-    after 200 -> Messages end.
+    after 500 -> Messages end.
 
 -endif.

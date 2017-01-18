@@ -40,3 +40,6 @@ else
 	@echo "ERROR: missing concrete.mk"
 	@echo "  run: concrete update"
 endif
+
+get-deps:
+	@$(REBARC) get-deps

@@ -23,6 +23,11 @@
              ,metric_sample_rate/0
              ,metric_tags/0
              ,metric_data/0
+             ,event_title/0
+             ,event_text/0
+             ,event_type/0
+             ,event_priority/0
+             ,event_tags/0
              ]).
 
 -export([
@@ -137,6 +142,8 @@ event(Title, Text, Type, Priority, Tags) ->
 -include_lib("eunit/include/eunit.hrl").
 
 gauge_test_() ->
+    edogstatsd_app:configure(),
+
     [
      ?_assertEqual(ok, edogstatsd:gauge("foo.bar", 1))
     ,?_assertEqual(ok, edogstatsd:gauge("foo.bar", 1, 0.5))

@@ -61,7 +61,7 @@ EDown = case proplists:get_value(use_edown, CONFIG) of
                 [DocOpts,
                  {deps,
                   [{edown, ".*",
-                    {git, "git://github.com/uwiger/edown.git",
+                    {git, "https://github.com/uwiger/edown.git",
                      {branch, "master"}}}]}]
            end,
 
@@ -75,7 +75,7 @@ LockDeps = case proplists:get_value(use_lock_deps, CONFIG) of
                          end,
                    [{deps,
                      [{rebar_lock_deps_plugin, ".*",
-                       {git, "git://github.com/seth/rebar_lock_deps_plugin.git",
+                       {git, "https://github.com/seth/rebar_lock_deps_plugin.git",
                         Tag}}]},
                     {plugins, [rebar_lock_deps_plugin]}]
            end,
