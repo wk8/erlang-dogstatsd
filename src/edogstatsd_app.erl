@@ -23,7 +23,10 @@ configure() ->
              ,{vm_stats_base_key, "VM_STATS_BASE_KEY", [{default, "erlang.vm"}]}
              ],
     Config1 = read_app_config(Config),
-    ok = stillir:set_config(edogstatsd, Config1).
+    ok = stillir:set_config(edogstatsd, Config1),
+
+    ok = edogstatsd_udp:init(stillir:get_config(edogstatsd, agent_address),
+                             stillir:get_config(edogstatsd, agent_port)).
 
 read_app_config(Config) ->
     lists:map(fun ({AppVar, EnvVar, Opts0}) ->
