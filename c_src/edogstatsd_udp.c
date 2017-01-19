@@ -60,6 +60,8 @@ static ERL_NIF_TERM edogstatsd_udp_set_server_info(ErlNifEnv* env, int argc, con
     memcpy(server_ip, "127.0.0.1", 10);
   }
 
+  ERL_NIF_TERM result;
+
   // populate the sockaddr_in
   memset(&edogstatsd_server, 0, sockaddr_in_size);
   edogstatsd_server.sin_family = AF_INET;
@@ -74,7 +76,7 @@ static ERL_NIF_TERM edogstatsd_udp_set_server_info(ErlNifEnv* env, int argc, con
 
   enif_rwlock_rwunlock(pool_lock);
 
-  return atom_ok;
+  return result;
 }
 
 // no need for a lock here since it's only ever called inside of
