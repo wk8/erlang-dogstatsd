@@ -155,6 +155,9 @@ distclean:
 	@rm -rf deps $(DEPS_PLT)
 	@$(REBARC) clean
 	@rm -rvf priv/*.so
+	@rm -rvf priv/*.o
+	@rm -rvf c_src/*.o
+	@rm -rvf c_src/*.d
 
 eunit:
 	@$(REBARC) skip_deps=true eunit

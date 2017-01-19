@@ -16,7 +16,7 @@ static ERL_NIF_TERM atom_init_failed;
 static ERL_NIF_TERM atom_must_init_first;
 
 // there's one buffer per process
-static ErlNifResourceType* buffer_resource;
+static ErlNifResourceType* buffer_resource = NULL;
 
 typedef enum { INIT_NOT_DONE_YET, INIT_SUCCESSFUL, INIT_FAILED } init_state;
 static init_state init_status = INIT_NOT_DONE_YET;
@@ -26,6 +26,10 @@ static int server_port;
 static struct sockaddr_in edogstatsd_server;
 static int socket_fd = -1;
 static int sockaddr_in_size = sizeof(struct sockaddr_in);
+
+// we need a lock when creating and destroying the buffers (which happens once
+// per process, acceptable)
+ErlNifRWLock* buffers_lock = NULL;
 
 // expects the server's IP (as a string) as first argument, and the port as
 // second argument (as an int)
@@ -68,15 +72,19 @@ static ERL_NIF_TERM edogstatsd_udp_init(ErlNifEnv* env, int argc, const ERL_NIF_
 
 static ERL_NIF_TERM edogstatsd_new_buffer(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
+  enif_rwlock_rwlock(buffers_lock);
+
   ErlNifBinary* buffer = enif_alloc_resource(buffer_resource, sizeof(ErlNifBinary));
 
   if (!enif_alloc_binary(BUFFER_SIZE, buffer)) {
+    enif_rwlock_rwunlock(buffers_lock);
     return atom_error;
   }
 
   // wrap it in a resource
   ERL_NIF_TERM resource = enif_make_resource(env, buffer);
   enif_release_resource(buffer);
+  enif_rwlock_rwunlock(buffers_lock);
   return enif_make_tuple2(env, atom_ok, resource);
 }
 
@@ -110,11 +118,15 @@ static ERL_NIF_TERM edogstatsd_udp_send(ErlNifEnv* env, int argc, const ERL_NIF_
 
 void free_buffer(ErlNifEnv* env, void* obj)
 {
+  enif_rwlock_rwlock(buffers_lock);
+
   ErlNifBinary* buffer = (ErlNifBinary*) obj;
 
   if (buffer) {
     enif_release_binary(buffer);
   }
+
+  enif_rwlock_rwunlock(buffers_lock);
 }
 
 static int edogstatsd_udp_load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info)
@@ -126,18 +138,15 @@ static int edogstatsd_udp_load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM lo
   atom_must_init_first = enif_make_atom(env, "must_init_first");
 
   // init the resource
-  ErlNifResourceType* resource = enif_open_resource_type(env, NULL, "edogstatsd_udp", free_buffer,
-                                                         ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER,
-                                                         NULL);
+  buffer_resource = enif_open_resource_type(env, NULL, "edogstatsd_udp", free_buffer,
+                                            ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER,
+                                            NULL);
 
-  if(resource) {
-    buffer_resource = resource;
-    return 0;
-  } else {
-    return 1;
-  }
+  // init the lock
+  buffers_lock = enif_rwlock_create("edogstatsd_udp_buffers_lock");
+
+  return buffer_resource && buffers_lock ? 0 : 1;
 }
-
 
 static ErlNifFunc edogstatsd_udp_nif_funcs[] = {
   {"init",       2, edogstatsd_udp_init},
