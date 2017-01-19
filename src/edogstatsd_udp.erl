@@ -1,31 +1,24 @@
 -module(edogstatsd_udp).
 
 -export([
-    init/2,
-    send/1,
-    send/2,
-    buffer/0
+    set_server_info/2,
+    send_lines/1,
+    current_pool_size/0,
+    allocated_worker_spaces_count/0,
+    destroyed_worker_spaces_count/0
 ]).
 
 -on_load(init/0).
 
 -define(NOT_LOADED, not_loaded(?LINE)).
 
-init(_ServerIpString, _ServerPort) -> ?NOT_LOADED.
+set_server_info(_ServerIpString, _ServerPort) -> ?NOT_LOADED.
 
-send(Line) ->
-    case buffer() of
-        {ok, Buffer} -> send(Buffer, Line);
-        {error, _Why} = Error -> Error
-    end.
+send_lines(_LinesAsIOLists) -> ?NOT_LOADED.
 
-send(_Buffer, _Line) -> ?NOT_LOADED.
-
-buffer() ->
-    case erlang:get(?MODULE) of
-        undefined -> try_to_allocate_new_buffer();
-        Buffer -> {ok, Buffer}
-    end.
+current_pool_size() -> ?NOT_LOADED.
+allocated_worker_spaces_count() -> ?NOT_LOADED.
+destroyed_worker_spaces_count() -> ?NOT_LOADED.
 
 %%% Private helpers
 
@@ -43,27 +36,14 @@ init() ->
 not_loaded(Line) ->
     erlang:nif_error({not_loaded, [{module, ?MODULE}, {line, Line}]}).
 
-try_to_allocate_new_buffer() ->
-    case new_buffer() of
-        {ok, Buffer} = Success ->
-            erlang:put(?MODULE, Buffer),
-            Success;
-        error ->
-            {error, could_not_allocate_buffer}
-    end.
-
-new_buffer() -> ?NOT_LOADED.
-
 %%% Tests
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
--define(PORT, 8125).
-
 basic_send_test_() ->
     with_setup(fun(Socket) ->
-        ok = send(["hello", [[" "]], <<"world">>]),
+        ok = send_lines(["hello", [[" "]], <<"world">>]),
 
         {UdpMessages, OtherMessages} = receive_messages(Socket, 1),
 
@@ -71,7 +51,7 @@ basic_send_test_() ->
          ?_assertEqual(["hello world"], UdpMessages),
          ?_assertEqual([], OtherMessages)
         ]
-    end).
+    end, 18125).
 
 parallel_send_test_() ->
     with_setup(fun(Socket) ->
@@ -103,7 +83,7 @@ parallel_send_test_() ->
                     lists:foreach(
                         fun(IOListMsg) ->
                             timer:sleep(rand:uniform(50)),
-                            ok = send(IOListMsg)
+                            ok = send_lines(IOListMsg)
                         end,
                         IOListMsgs
                     ),
@@ -128,13 +108,13 @@ parallel_send_test_() ->
          assert_sets_equal(udp_messages, ExpectedUdpMessages, ActualUdpMessages),
          assert_sets_equal(other_messages, ExpectedOtherMessages, ActualOtherMessages)
         ]
-    end).
+    end, 18126).
 
-with_setup(TestFun) ->
+with_setup(TestFun, Port) ->
     {setup,
      fun() ->
-         ok = init("localhost", ?PORT),
-         {ok, Socket} = gen_udp:open(?PORT, [{active, true}]),
+         ok = set_server_info("localhost", Port),
+         {ok, Socket} = gen_udp:open(Port, [{active, true}]),
          Socket
      end,
      fun(Socket) ->
