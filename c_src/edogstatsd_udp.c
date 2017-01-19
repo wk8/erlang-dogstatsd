@@ -86,6 +86,7 @@ void free_worker_space(worker_space_t* worker_space)
   if (worker_space) {
     if (worker_space->buffer) {
       enif_release_binary(worker_space->buffer);
+      free(worker_space->buffer);
     }
 
     if (worker_space->socket >= 0) {
@@ -110,14 +111,20 @@ worker_space_t* alloc_worker_space() {
   worker_space->buffer = NULL;
   worker_space->next = NULL;
 
-  // open the socket
-  worker_space->socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-  if (worker_space->socket == -1) {
+  // allocate the buffer
+  worker_space->buffer = (ErlNifBinary*) calloc(1, sizeof(ErlNifBinary));
+  if (!worker_space->buffer) {
+    goto cleanup_failed_alloc_worker_space;
+  }
+  if (!enif_alloc_binary(BUFFER_SIZE, worker_space->buffer)) {
+    free(worker_space->buffer);
+    worker_space->buffer = NULL;
     goto cleanup_failed_alloc_worker_space;
   }
 
-  // allocate the buffer
-  if (!enif_alloc_binary(BUFFER_SIZE, worker_space->buffer)) {
+  // open the socket
+  worker_space->socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  if (worker_space->socket == -1) {
     goto cleanup_failed_alloc_worker_space;
   }
 
