@@ -76,7 +76,7 @@ basic_send_test_() ->
 parallel_send_test_() ->
     with_setup(fun(Socket) ->
         %% build a bunch of messages to send
-        ProcessCount = 20,
+        ProcessCount = 100,
         Messages = lists:map(
             fun(I) ->
                 BytesCount = 20 + rand:uniform(20),
