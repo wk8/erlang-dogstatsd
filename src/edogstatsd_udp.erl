@@ -110,9 +110,9 @@ parallel_send_test_() ->
         [
          assert_sets_equal(udp_messages, ExpectedUdpMessages, ActualUdpMessages),
          assert_sets_equal(other_messages, ExpectedOtherMessages, ActualOtherMessages),
-         %% we should have created at least a couple of a worker spaces, and
-         %% they should be back in the pool by now
-         ?_assert(AllocatedWorkerSpacesCount > 1),
+         %% we should have created at least one worker space, and
+         %% it/they should be back in the pool by now
+         ?_assert(AllocatedWorkerSpacesCount > 0),
          ?_assertEqual(AllocatedWorkerSpacesCount, CurrentPoolSize)
         ]
     end, 18126).
