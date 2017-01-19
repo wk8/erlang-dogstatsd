@@ -2,7 +2,7 @@
 
 -type metric_name() :: iodata().
 -type metric_value() :: number().
--type metric_type() :: counter | gauge | histogram | timer | set.
+-type metric_type() :: gauge | counter | increment | histogram | timer | timing | set.
 -type metric_sample_rate() :: number().
 -type metric_tags() :: map().
 

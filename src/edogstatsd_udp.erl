@@ -119,13 +119,13 @@ parallel_send_test_() ->
 
 error_send_test_() ->
     with_setup(fun(Socket) ->
-        Result = send_lines([i_aint_an_iolist, ["hey you"], 42, <<"out there in the cold">>]),
+        Result = send_lines([i_aint_an_io_data, ["hey you"], 42, <<"out there in the cold">>]),
 
         {UdpMessages, OtherMessages} = receive_messages(Socket, 2),
 
         [
-         ?_assertEqual({error, [{not_an_io_list, 42},
-                                {not_an_io_list, i_aint_an_iolist}]}, Result),
+         ?_assertEqual({error, [{not_an_io_data, 42},
+                                {not_an_io_data, i_aint_an_io_data}]}, Result),
          ?_assertEqual(["hey you", "out there in the cold"], UdpMessages),
          ?_assertEqual([], OtherMessages)
         ]

@@ -14,7 +14,7 @@ static ERL_NIF_TERM atom_ok;
 static ERL_NIF_TERM atom_error;
 static ERL_NIF_TERM atom_set_server_info_failed;
 static ERL_NIF_TERM atom_must_set_server_info_first;
-static ERL_NIF_TERM atom_not_an_io_list;
+static ERL_NIF_TERM atom_not_an_io_data;
 static ERL_NIF_TERM atom_send_failed;
 static ERL_NIF_TERM atom_cannot_allocate_worker_space;
 
@@ -183,13 +183,13 @@ void check_in_worker_space(worker_space_t* worker_space)
   enif_rwlock_rwunlock(pool_lock);
 }
 
-// the only argument should be a list of IO lists
+// the only argument should be a list of IO data
 static ERL_NIF_TERM do_edogstatsd_udp_send_lines(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
   int sent_count;
   worker_space_t* worker_space = NULL;
   ErlNifBinary* buffer;
-  ERL_NIF_TERM list = argv[0], current_io_list, tail, send_error,
+  ERL_NIF_TERM list = argv[0], current_io_data, tail, send_error,
                errors_list = enif_make_list(env, 0), result = 0;
 
   if (!enif_is_list(env, list)) {
@@ -204,11 +204,11 @@ static ERL_NIF_TERM do_edogstatsd_udp_send_lines(ErlNifEnv* env, int argc, const
   }
   buffer = worker_space->buffer;
 
-  while(enif_get_list_cell(env, list, &current_io_list, &tail)) {
+  while(enif_get_list_cell(env, list, &current_io_data, &tail)) {
     list = tail;
 
-    if (!enif_inspect_iolist_as_binary(env, current_io_list, buffer)) {
-      send_error = enif_make_tuple2(env, atom_not_an_io_list, current_io_list);
+    if (!enif_inspect_iolist_as_binary(env, current_io_data, buffer)) {
+      send_error = enif_make_tuple2(env, atom_not_an_io_data, current_io_data);
       errors_list = enif_make_list_cell(env, send_error, errors_list);
       continue;
     }
@@ -270,7 +270,7 @@ static int edogstatsd_udp_load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM lo
   atom_error                        = enif_make_atom(env, "error");
   atom_set_server_info_failed       = enif_make_atom(env, "set_server_info_failed");
   atom_must_set_server_info_first   = enif_make_atom(env, "must_set_server_info_first");
-  atom_not_an_io_list               = enif_make_atom(env, "not_an_io_list");
+  atom_not_an_io_data               = enif_make_atom(env, "not_an_io_data");
   atom_send_failed                  = enif_make_atom(env, "send_failed");
   atom_cannot_allocate_worker_space = enif_make_atom(env, "cannot_allocate_worker_space");
 
