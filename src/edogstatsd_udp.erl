@@ -117,6 +117,20 @@ parallel_send_test_() ->
         ]
     end, 18126).
 
+error_send_test_() ->
+    with_setup(fun(Socket) ->
+        Result = send_lines([i_aint_an_iolist, ["hey you"], 42, <<"out there in the cold">>]),
+
+        {UdpMessages, OtherMessages} = receive_messages(Socket, 2),
+
+        [
+         ?_assertEqual({error, [{not_an_io_list, 42},
+                                {not_an_io_list, i_aint_an_iolist}]}, Result),
+         ?_assertEqual(["hey you", "out there in the cold"], UdpMessages),
+         ?_assertEqual([], OtherMessages)
+        ]
+    end, 18127).
+
 with_setup(TestFun, Port) ->
     {setup,
      fun() ->
@@ -134,7 +148,7 @@ receive_messages(Socket, ExpectedCount) ->
     receive_messages(Socket, ExpectedCount, 0, {[], []}).
 
 receive_messages(_Socket, ExpectedCount, ExpectedCount, Messages) ->
-    Messages;
+    reverse_messages(Messages);
 receive_messages(Socket, ExpectedCount, CurrentCount, {UdpMessages, OtherMessages} = Messages) ->
     receive
     {udp, Socket, {127, 0, 0, 1}, _Port, Message} ->
@@ -143,7 +157,10 @@ receive_messages(Socket, ExpectedCount, CurrentCount, {UdpMessages, OtherMessage
     OtherMessage ->
         NewMessages = {UdpMessages, [OtherMessage | OtherMessages]},
         receive_messages(Socket, ExpectedCount, CurrentCount + 1, NewMessages)
-    after 3000 -> Messages end.
+    after 3000 -> reverse_messages(Messages) end.
+
+reverse_messages({UdpMessages, OtherMessages}) ->
+    {lists:reverse(UdpMessages), lists:reverse(OtherMessages)}.
 
 assert_sets_equal(Label, Expected, Actual) ->
     ExpectedSet = sets:from_list(Expected),

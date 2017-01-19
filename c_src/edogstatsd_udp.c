@@ -209,7 +209,7 @@ static ERL_NIF_TERM do_edogstatsd_udp_send_lines(ErlNifEnv* env, int argc, const
 
     if (!enif_inspect_iolist_as_binary(env, current_io_list, buffer)) {
       send_error = enif_make_tuple2(env, atom_not_an_io_list, current_io_list);
-      errors_list = enif_make_list_cell(env, send_error, list);
+      errors_list = enif_make_list_cell(env, send_error, errors_list);
       continue;
     }
 
@@ -217,7 +217,7 @@ static ERL_NIF_TERM do_edogstatsd_udp_send_lines(ErlNifEnv* env, int argc, const
                         (struct sockaddr*) &edogstatsd_server, sockaddr_in_size);
     if (sent_count != buffer->size) {
       send_error = enif_make_tuple4(env, atom_error, atom_send_failed, sent_count, buffer->size);
-      errors_list = enif_make_list_cell(env, send_error, list);
+      errors_list = enif_make_list_cell(env, send_error, errors_list);
     }
   }
 
