@@ -27,7 +27,7 @@ static struct sockaddr_in edogstatsd_server;
 static int socket_fd = -1;
 static int sockaddr_in_size = sizeof(struct sockaddr_in);
 
-// we need a lock when creating and destroying the buffers (which happens once
+// we need a lock when creating the buffers (which happens once
 // per process, acceptable)
 ErlNifRWLock* buffers_lock = NULL;
 
@@ -118,15 +118,11 @@ static ERL_NIF_TERM edogstatsd_udp_send(ErlNifEnv* env, int argc, const ERL_NIF_
 
 void free_buffer(ErlNifEnv* env, void* obj)
 {
-  enif_rwlock_rwlock(buffers_lock);
-
   ErlNifBinary* buffer = (ErlNifBinary*) obj;
 
   if (buffer) {
     enif_release_binary(buffer);
   }
-
-  enif_rwlock_rwunlock(buffers_lock);
 }
 
 static int edogstatsd_udp_load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info)
