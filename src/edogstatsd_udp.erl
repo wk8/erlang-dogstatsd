@@ -43,7 +43,7 @@ not_loaded(Line) ->
 
 basic_send_test_() ->
     with_setup(fun(Socket) ->
-        ok = send_lines(["hello", [[" "]], <<"world">>]),
+        ok = send_lines([["hello", [[" "]], <<"world">>]]),
 
         {UdpMessages, OtherMessages} = receive_messages(Socket, 1),
 
@@ -56,7 +56,7 @@ basic_send_test_() ->
 parallel_send_test_() ->
     with_setup(fun(Socket) ->
         %% build a bunch of messages to send
-        ProcessCount = 20,
+        ProcessCount = 50,
         Messages = lists:map(
             fun(I) ->
                 BytesCount = 20 + rand:uniform(20),
@@ -83,7 +83,7 @@ parallel_send_test_() ->
                     lists:foreach(
                         fun(IOListMsg) ->
                             timer:sleep(rand:uniform(50)),
-                            ok = send_lines(IOListMsg)
+                            ok = send_lines([IOListMsg])
                         end,
                         IOListMsgs
                     ),
