@@ -139,12 +139,12 @@ application_test_() ->
          MetricResult = edogstatsd:gauge("test", 1),
          MetricMessage = receive
              {udp, Socket, {127, 0, 0, 1}, _Port1, Msg1} -> Msg1
-             after 30000 5000 -> metric_time_out end,
+             after 3000 -> metric_time_out end,
 
          EventResult = edogstatsd:event("my_title", "my_text"),
          EventMessage = receive
              {udp, Socket, {127, 0, 0, 1}, _Port2, Msg2} -> Msg2
-             after 30000 5000 -> event_time_out end,
+             after 3000 -> event_time_out end,
 
          [
              ?_assertEqual(ok, MetricResult),

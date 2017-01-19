@@ -23,7 +23,7 @@ or in an Erlang config file in all_lowercase.
 | VM_STATS           | boolean | `true`        | Collect stats on the Erlang VM?                                                       |
 | VM_STATS_DELAY     | integer | `60000`       | Time in ms between collection Erlang VM stats                                         |
 | VM_STATS_SCHEDULER | boolean | `true`        | Collect stats on the scheduler?                                                       |
-| VM_STATS_BASE_KEY  | string  | `"erlang.vm"` | All the VM stats will begin with this prefix (after 30000 the GLOBAL_PREFIX if that is set) |
+| VM_STATS_BASE_KEY  | string  | `"erlang.vm"` | All the VM stats will begin with this prefix (after 3000 the GLOBAL_PREFIX if that is set) |
 
 ## Use
 

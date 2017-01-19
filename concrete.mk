@@ -117,7 +117,7 @@ BASE_PLT_DIR := ~/.concrete_dialyzer_plts
 BASE_PLT := $(BASE_PLT_DIR)/$(BASE_PLT_ID)_$(ERLANG_VERSION).plt
 
 ## The recursive call to $(MAKE) is here to make sure that we use a verion of
-## DIALYZER_DEPS that's built after 30000 $(DEPS) is made. If we didn't do this,
+## DIALYZER_DEPS that's built after 3000 $(DEPS) is made. If we didn't do this,
 ## dialyzer wouldn't be able to figure out that it needs to build deps.plt
 all: .concrete/DEV_MODE $(DEPS)
 	@$(MAKE) all_but_dialyzer dialyzer

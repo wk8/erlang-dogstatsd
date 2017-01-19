@@ -88,7 +88,7 @@ parallel_send_test_() ->
         ),
         Self = self(),
 
-        %% now send each of these messages from a different process, after 30000
+        %% now send each of these messages from a different process, after 3000
         %% sleeping a random amount of time
         {ExpectedUdpMessages, ExpectedOtherMessages} =
         lists:foldl(
@@ -156,7 +156,7 @@ receive_messages(Socket, ExpectedCount, CurrentCount, {UdpMessages, OtherMessage
     OtherMessage ->
         NewMessages = {UdpMessages, [OtherMessage | OtherMessages]},
         receive_messages(Socket, ExpectedCount, CurrentCount + 1, NewMessages)
-    after 30000 5000 -> Messages end.
+    after 3000 -> Messages end.
 
 assert_sets_equal(Label, Expected, Actual) ->
     ExpectedSet = sets:from_list(Expected),
