@@ -23,7 +23,10 @@ configure() ->
              ,{vm_stats_base_key, "VM_STATS_BASE_KEY", [{default, "erlang.vm"}]}
              ],
     Config1 = read_app_config(Config),
-    ok = stillir:set_config(edogstatsd, Config1).
+    ok = stillir:set_config(edogstatsd, Config1),
+
+    ok = edogstatsd_udp:set_server_info(stillir:get_config(edogstatsd, agent_address),
+                                        stillir:get_config(edogstatsd, agent_port)).
 
 read_app_config(Config) ->
     lists:map(fun ({AppVar, EnvVar, Opts0}) ->
@@ -136,12 +139,12 @@ application_test_() ->
          MetricResult = edogstatsd:gauge("test", 1),
          MetricMessage = receive
              {udp, Socket, {127, 0, 0, 1}, _Port1, Msg1} -> Msg1
-             after 500 -> metric_time_out end,
+             after 3000 -> metric_time_out end,
 
          EventResult = edogstatsd:event("my_title", "my_text"),
          EventMessage = receive
              {udp, Socket, {127, 0, 0, 1}, _Port2, Msg2} -> Msg2
-             after 500 -> event_time_out end,
+             after 3000 -> event_time_out end,
 
          [
              ?_assertEqual(ok, MetricResult),

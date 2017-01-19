@@ -1,31 +1,24 @@
 -module(edogstatsd_udp).
 
 -export([
-    init/2,
-    send/1,
-    send/2,
-    buffer/0
+    set_server_info/2,
+    send_lines/1,
+    current_pool_size/0,
+    allocated_worker_spaces_count/0,
+    destroyed_worker_spaces_count/0
 ]).
 
 -on_load(init/0).
 
 -define(NOT_LOADED, not_loaded(?LINE)).
 
-init(_ServerIpString, _ServerPort) -> ?NOT_LOADED.
+set_server_info(_ServerIpString, _ServerPort) -> ?NOT_LOADED.
 
-send(Line) ->
-    case buffer() of
-        {ok, Buffer} -> send(Buffer, Line);
-        {error, _Why} = Error -> Error
-    end.
+send_lines(_LinesAsIOLists) -> ?NOT_LOADED.
 
-send(_Buffer, _Line) -> ?NOT_LOADED.
-
-buffer() ->
-    case erlang:get(?MODULE) of
-        undefined -> try_to_allocate_new_buffer();
-        Buffer -> {ok, Buffer}
-    end.
+current_pool_size() -> ?NOT_LOADED.
+allocated_worker_spaces_count() -> ?NOT_LOADED.
+destroyed_worker_spaces_count() -> ?NOT_LOADED.
 
 %%% Private helpers
 
@@ -43,27 +36,14 @@ init() ->
 not_loaded(Line) ->
     erlang:nif_error({not_loaded, [{module, ?MODULE}, {line, Line}]}).
 
-try_to_allocate_new_buffer() ->
-    case new_buffer() of
-        {ok, Buffer} = Success ->
-            erlang:put(?MODULE, Buffer),
-            Success;
-        error ->
-            {error, could_not_allocate_buffer}
-    end.
-
-new_buffer() -> ?NOT_LOADED.
-
 %%% Tests
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
--define(PORT, 8125).
-
 basic_send_test_() ->
     with_setup(fun(Socket) ->
-        ok = send(["hello", [[" "]], <<"world">>]),
+        ok = send_lines([["hello", [[" "]], <<"world">>]]),
 
         {UdpMessages, OtherMessages} = receive_messages(Socket, 1),
 
@@ -71,80 +51,91 @@ basic_send_test_() ->
          ?_assertEqual(["hello world"], UdpMessages),
          ?_assertEqual([], OtherMessages)
         ]
-    end).
+    end, 18125).
 
 parallel_send_test_() ->
     with_setup(fun(Socket) ->
         %% build a bunch of messages to send
-        MsgCount = 100,
-        MsgList = lists:map(
+        ProcessCount = 25,
+        Messages = lists:map(
             fun(I) ->
                 BytesCount = 20 + rand:uniform(20),
-                {I, base64:encode(crypto:strong_rand_bytes(BytesCount))}
+                RandomBin = base64:encode(crypto:strong_rand_bytes(BytesCount)),
+                IOListMsg = [erlang:integer_to_list(I), " ", RandomBin],
+                {I, IOListMsg}
             end,
-            lists:seq(1, MsgCount)
+            lists:seq(1, ProcessCount)
         ),
         Self = self(),
 
-        %% now send each of these messages from a different process, after
+        %% now send each of these messages from a different process, after 3000
         %% sleeping a random amount of time
-        lists:foreach(
-            fun({I, Message}) ->
+        {ExpectedUdpMessages, ExpectedOtherMessages} =
+        lists:foldl(
+            fun({I, BaseIOListMsg}, {CurrentExpectedUdpMessages, CurrentExpectedOtherMessages}) ->
+                %% let's create the 3 messages we're actually going to send over
+                %% UDP, of the form "1|2|3 processId randomBin"
+                IOListMsgs = [[erlang:integer_to_list(Counter), " ", BaseIOListMsg]
+                              || Counter <- [1, 2]],
+                OkMessage = {I, ok},
+
                 erlang:spawn(fun() ->
-                    RawMessage = [erlang:integer_to_list(I), " ", Message],
-                    %% we send the message twice
-                    timer:sleep(rand:uniform(50)),
-                    ok = send(RawMessage),
-                    timer:sleep(rand:uniform(50)),
-                    ok = send(RawMessage),
+                    lists:foreach(
+                        fun(IOListMsg) ->
+                            timer:sleep(rand:uniform(50)),
+                            ok = send_lines([IOListMsg])
+                        end,
+                        IOListMsgs
+                    ),
                     %% then send a simple `ok' to make sure this process didn't
                     %% crash
-                    Self ! {I, ok}
+                    Self ! OkMessage
                 end),
-                ok
+
+                StringMsgs = [erlang:binary_to_list(erlang:iolist_to_binary(IOListMsg))
+                              || IOListMsg <- IOListMsgs],
+                {StringMsgs ++ CurrentExpectedUdpMessages,
+                 [OkMessage | CurrentExpectedOtherMessages]}
             end,
-            MsgList
+            {[], []},
+            Messages
         ),
 
         %% now let's receive all these
-        {UdpMessages, OtherMessages} = receive_messages(Socket, 3 * MsgCount),
+        {ActualUdpMessages, ActualOtherMessages} = receive_messages(Socket, 4 * ProcessCount),
 
-        ParsedUdpMessages = lists:foldl(
-            fun(RawMessage, Acc) ->
-                [IBin, Message] = binary:split(erlang:list_to_binary(RawMessage), <<" ">>),
-                I = erlang:binary_to_integer(IBin),
-                maps:update_with(
-                    I,
-                    fun({PreviousCount, SameMessage}) when SameMessage =:= Message ->
-                        {PreviousCount + 1, Message}
-                    end,
-                    {1, Message},
-                    Acc)
-            end,
-            #{},
-            UdpMessages
-        ),
-        ExpectedParsedUdpMessages = lists:foldl(
-            fun({I, Message}, Acc) ->
-                maps:put(I, {2, Message}, Acc)
-            end,
-            #{},
-            MsgList
-        ),
-
-        ExpectedSortedOtherMessages = [{I, ok} || I <- lists:seq(1, MsgCount)],
+        CurrentPoolSize = edogstatsd_udp:current_pool_size(),
+        AllocatedWorkerSpacesCount = edogstatsd_udp:allocated_worker_spaces_count(),
 
         [
-         ?_assertEqual(ExpectedParsedUdpMessages, ParsedUdpMessages),
-         ?_assertEqual(lists:sort(OtherMessages), ExpectedSortedOtherMessages)
+         assert_sets_equal(udp_messages, ExpectedUdpMessages, ActualUdpMessages),
+         assert_sets_equal(other_messages, ExpectedOtherMessages, ActualOtherMessages),
+         %% we should have created at least one worker space, and
+         %% it/they should be back in the pool by now
+         ?_assert(AllocatedWorkerSpacesCount > 0),
+         ?_assertEqual(AllocatedWorkerSpacesCount, CurrentPoolSize)
         ]
-    end).
+    end, 18126).
 
-with_setup(TestFun) ->
+error_send_test_() ->
+    with_setup(fun(Socket) ->
+        Result = send_lines([i_aint_an_iolist, ["hey you"], 42, <<"out there in the cold">>]),
+
+        {UdpMessages, OtherMessages} = receive_messages(Socket, 2),
+
+        [
+         ?_assertEqual({error, [{not_an_io_list, 42},
+                                {not_an_io_list, i_aint_an_iolist}]}, Result),
+         ?_assertEqual(["hey you", "out there in the cold"], UdpMessages),
+         ?_assertEqual([], OtherMessages)
+        ]
+    end, 18127).
+
+with_setup(TestFun, Port) ->
     {setup,
      fun() ->
-         ok = init("localhost", ?PORT),
-         {ok, Socket} = gen_udp:open(?PORT, [{active, true}]),
+         ok = set_server_info("localhost", Port),
+         {ok, Socket} = gen_udp:open(Port, [{active, true}]),
          Socket
      end,
      fun(Socket) ->
@@ -157,7 +148,7 @@ receive_messages(Socket, ExpectedCount) ->
     receive_messages(Socket, ExpectedCount, 0, {[], []}).
 
 receive_messages(_Socket, ExpectedCount, ExpectedCount, Messages) ->
-    Messages;
+    reverse_messages(Messages);
 receive_messages(Socket, ExpectedCount, CurrentCount, {UdpMessages, OtherMessages} = Messages) ->
     receive
     {udp, Socket, {127, 0, 0, 1}, _Port, Message} ->
@@ -166,6 +157,21 @@ receive_messages(Socket, ExpectedCount, CurrentCount, {UdpMessages, OtherMessage
     OtherMessage ->
         NewMessages = {UdpMessages, [OtherMessage | OtherMessages]},
         receive_messages(Socket, ExpectedCount, CurrentCount + 1, NewMessages)
-    after 500 -> Messages end.
+    after 3000 -> reverse_messages(Messages) end.
+
+reverse_messages({UdpMessages, OtherMessages}) ->
+    {lists:reverse(UdpMessages), lists:reverse(OtherMessages)}.
+
+assert_sets_equal(Label, Expected, Actual) ->
+    ExpectedSet = sets:from_list(Expected),
+    ActualSet = sets:from_list(Actual),
+
+    MissingItems = sets:subtract(ExpectedSet, ActualSet),
+    ExtraItems = sets:subtract(ActualSet, ExpectedSet),
+
+    [
+     ?_assertEqual({Label, missing, []}, {Label, missing, sets:to_list(MissingItems)}),
+     ?_assertEqual({Label, extra, []}, {Label, extra, sets:to_list(ExtraItems)})
+    ].
 
 -endif.

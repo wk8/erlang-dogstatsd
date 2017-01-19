@@ -28,5 +28,6 @@ dependencies:
 
 test:
   override:
+    - '. ~/.erlangs/$ERL_VERSION/activate && make get-rebar distclean'
     - '. ~/.erlangs/$ERL_VERSION/activate && make get-rebar all_but_dialyzer'
     - '. ~/.erlangs/$ERL_VERSION/activate && make get-rebar dialyzer'
