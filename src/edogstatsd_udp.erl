@@ -104,9 +104,16 @@ parallel_send_test_() ->
         %% now let's receive all these
         {ActualUdpMessages, ActualOtherMessages} = receive_messages(Socket, 4 * ProcessCount),
 
+        CurrentPoolSize = edogstatsd_udp:current_pool_size(),
+        AllocatedWorkerSpacesCount = edogstatsd_udp:allocated_worker_spaces_count(),
+
         [
          assert_sets_equal(udp_messages, ExpectedUdpMessages, ActualUdpMessages),
-         assert_sets_equal(other_messages, ExpectedOtherMessages, ActualOtherMessages)
+         assert_sets_equal(other_messages, ExpectedOtherMessages, ActualOtherMessages),
+         %% we should have created at least a couple of a worker spaces, and
+         %% they should be back in the pool by now
+         ?_assert(AllocatedWorkerSpacesCount > 1),
+         ?_assertEqual(AllocatedWorkerSpacesCount, CurrentPoolSize)
         ]
     end, 18126).
 
