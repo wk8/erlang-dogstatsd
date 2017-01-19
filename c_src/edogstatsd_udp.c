@@ -13,6 +13,7 @@ static ERL_NIF_TERM atom_ok;
 static ERL_NIF_TERM atom_error;
 static ERL_NIF_TERM atom_send_failed;
 static ERL_NIF_TERM atom_init_failed;
+static ERL_NIF_TERM atom_must_init_first;
 
 // there's one buffer per process
 static ErlNifResourceType* buffer_resource;
@@ -103,7 +104,7 @@ static ERL_NIF_TERM edogstatsd_udp_send(ErlNifEnv* env, int argc, const ERL_NIF_
       return enif_make_tuple2(env, atom_error, atom_init_failed);
     case INIT_NOT_DONE_YET:
     default:
-      return enif_make_badarg(env);
+      return enif_make_tuple2(env, atom_error, atom_must_init_first);
   }
 }
 
@@ -122,6 +123,7 @@ static int edogstatsd_udp_load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM lo
   atom_error = enif_make_atom(env, "error");
   atom_send_failed = enif_make_atom(env, "send_failed");
   atom_init_failed = enif_make_atom(env, "init_failed");
+  atom_must_init_first = enif_make_atom(env, "must_init_first");
 
   // init the resource
   ErlNifResourceType* resource = enif_open_resource_type(env, NULL, "edogstatsd_udp", free_buffer,
