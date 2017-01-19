@@ -140,20 +140,25 @@ static ERL_NIF_TERM edogstatsd_new_buffer(ErlNifEnv* env, int argc, const ERL_NI
 static ERL_NIF_TERM edogstatsd_udp_send(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
   ErlNifBinary* buffer;
-
+  WK_DEBUG("edogstatsd_udp_send debut");
+    
   switch(init_status) {
     case INIT_SUCCESSFUL:
+      enif_rwlock_rwlock(buffers_lock);
       if (!enif_get_resource(env, argv[0], buffer_resource, (void **)&buffer)
          || !enif_inspect_iolist_as_binary(env, argv[1], buffer)) {
-           WK_DEBUG("on make badarg");
+           WK_DEBUG("on make badarg edogstatsd_udp_send");
+           enif_rwlock_rwunlock(buffers_lock);
         return enif_make_badarg(env);
       }
 
       int sent_count = sendto(socket_fd, buffer->data, buffer->size, 0,
                               (struct sockaddr*) &edogstatsd_server, sockaddr_in_size);
       if (sent_count == buffer->size) {
+        enif_rwlock_rwunlock(buffers_lock);
         return atom_ok;
       } else {
+        enif_rwlock_rwunlock(buffers_lock);
         return enif_make_tuple4(env, atom_error, atom_send_failed, sent_count, buffer->size);
       };
     case INIT_FAILED:
