@@ -156,7 +156,7 @@ receive_messages(Socket, ExpectedCount, CurrentCount, {UdpMessages, OtherMessage
     OtherMessage ->
         NewMessages = {UdpMessages, [OtherMessage | OtherMessages]},
         receive_messages(Socket, ExpectedCount, CurrentCount + 1, NewMessages)
-    after 1000 -> Messages end.
+    after 5000 -> Messages end.
 
 assert_sets_equal(Label, Expected, Actual) ->
     ExpectedSet = sets:from_list(Expected),
