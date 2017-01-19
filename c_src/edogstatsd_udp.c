@@ -101,8 +101,10 @@ static ERL_NIF_TERM edogstatsd_udp_send(ErlNifEnv* env, int argc, const ERL_NIF_
         return enif_make_badarg(env);
       }
 
+      enif_rwlock_rwlock(buffers_lock);
       int sent_count = sendto(socket_fd, buffer->data, buffer->size, 0,
                               (struct sockaddr*) &edogstatsd_server, sockaddr_in_size);
+      enif_rwlock_rwunlock(buffers_lock);
       if (sent_count == buffer->size) {
         return atom_ok;
       } else {
