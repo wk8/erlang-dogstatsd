@@ -93,10 +93,10 @@ static ERL_NIF_TERM edogstatsd_new_buffer(ErlNifEnv* env, int argc, const ERL_NI
 static ERL_NIF_TERM edogstatsd_udp_send(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
   ErlNifBinary* buffer;
-    
+
   switch(init_status) {
     case INIT_SUCCESSFUL:
-    if (!enif_get_resource(env, argv[0], buffer_resource, (void **)&buffer)
+      if (!enif_get_resource(env, argv[0], buffer_resource, (void **)&buffer)
          || !enif_inspect_iolist_as_binary(env, argv[1], buffer)) {
         return enif_make_badarg(env);
       }
