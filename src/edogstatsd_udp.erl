@@ -3,9 +3,7 @@
 -export([
     set_server_info/2,
     send_lines/1,
-    current_pool_size/0,
-    allocated_worker_spaces_count/0,
-    destroyed_worker_spaces_count/0
+    current_pool_size/0
 ]).
 
 -on_load(init/0).
@@ -17,8 +15,6 @@ set_server_info(_ServerIpString, _ServerPort) -> ?NOT_LOADED.
 send_lines(_LinesAsIOLists) -> ?NOT_LOADED.
 
 current_pool_size() -> ?NOT_LOADED.
-allocated_worker_spaces_count() -> ?NOT_LOADED.
-destroyed_worker_spaces_count() -> ?NOT_LOADED.
 
 %%% Private helpers
 
@@ -105,15 +101,12 @@ parallel_send_test_() ->
         {ActualUdpMessages, ActualOtherMessages} = receive_messages(Socket, 4 * ProcessCount),
 
         CurrentPoolSize = edogstatsd_udp:current_pool_size(),
-        AllocatedWorkerSpacesCount = edogstatsd_udp:allocated_worker_spaces_count(),
 
         [
          assert_sets_equal(udp_messages, ExpectedUdpMessages, ActualUdpMessages),
          assert_sets_equal(other_messages, ExpectedOtherMessages, ActualOtherMessages),
-         %% we should have created at least one worker space, and
-         %% it/they should be back in the pool by now
-         ?_assert(AllocatedWorkerSpacesCount > 0),
-         ?_assertEqual(AllocatedWorkerSpacesCount, CurrentPoolSize)
+         %% we should have created at least one worker space
+         ?_assert(CurrentPoolSize > 0)
         ]
     end, 18126).
 
