@@ -2,7 +2,7 @@
 
 -export([
     set_server_info/2,
-    send_lines/1,
+    send_line/1,
     current_pool_size/0
 ]).
 
@@ -12,7 +12,7 @@
 
 set_server_info(_ServerIpString, _ServerPort) -> ?NOT_LOADED.
 
-send_lines(_LinesAsIOLists) -> ?NOT_LOADED.
+send_line(_LineAsIOData) -> ?NOT_LOADED.
 
 current_pool_size() -> ?NOT_LOADED.
 
@@ -39,7 +39,7 @@ not_loaded(Line) ->
 
 basic_send_test_() ->
     with_setup(fun(Socket) ->
-        ok = send_lines([["hello", [[" "]], <<"world">>]]),
+        ok = send_line(["hello", [[" "]], <<"world">>]),
 
         {UdpMessages, OtherMessages} = receive_messages(Socket, 1),
 
@@ -79,7 +79,7 @@ parallel_send_test_() ->
                     lists:foreach(
                         fun(IOListMsg) ->
                             timer:sleep(rand:uniform(50)),
-                            ok = send_lines([IOListMsg])
+                            ok = send_line(IOListMsg)
                         end,
                         IOListMsgs
                     ),
@@ -110,19 +110,23 @@ parallel_send_test_() ->
         ]
     end, 18126).
 
-error_send_test_() ->
+send_binary_test_() ->
     with_setup(fun(Socket) ->
-        Result = send_lines([i_aint_an_io_data, ["hey you"], 42, <<"out there in the cold">>]),
+        ok = send_line(<<"hello world 2">>),
 
-        {UdpMessages, OtherMessages} = receive_messages(Socket, 2),
+        {UdpMessages, OtherMessages} = receive_messages(Socket, 1),
 
         [
-         ?_assertEqual({error, [{not_an_io_data, 42},
-                                {not_an_io_data, i_aint_an_io_data}]}, Result),
-         ?_assertEqual(["hey you", "out there in the cold"], UdpMessages),
+         ?_assertEqual(["hello world 2"], UdpMessages),
          ?_assertEqual([], OtherMessages)
         ]
     end, 18127).
+
+bad_arg_test_() ->
+    with_setup(fun(_Socket) ->
+        [?_assertError(badarg, send_line(BadLine))
+         || BadLine <- [i_aint_an_io_data, 42, erlang:make_ref(), erlang:self()]]
+    end, 18128).
 
 with_setup(TestFun, Port) ->
     {setup,

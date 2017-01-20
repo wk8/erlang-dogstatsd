@@ -14,7 +14,6 @@ static ERL_NIF_TERM atom_ok;
 static ERL_NIF_TERM atom_error;
 static ERL_NIF_TERM atom_set_server_info_failed;
 static ERL_NIF_TERM atom_must_set_server_info_first;
-static ERL_NIF_TERM atom_not_an_io_data;
 static ERL_NIF_TERM atom_send_failed;
 static ERL_NIF_TERM atom_cannot_allocate_worker_space;
 
@@ -165,62 +164,38 @@ worker_space_t* get_current_thread_worker_space()
   return create_worker_space_for_current_thread(self);
 }
 
-// the only argument should be a list of IO data
-static ERL_NIF_TERM do_edogstatsd_udp_send_lines(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+// the only argument should be an IO data
+static ERL_NIF_TERM do_edogstatsd_udp_send_line(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-  int sent_count;
-  worker_space_t* worker_space = NULL;
+  worker_space_t* worker_space;
   ErlNifBinary* buffer;
-  ERL_NIF_TERM list = argv[0], current_io_data, tail, send_error,
-               errors_list = enif_make_list(env, 0), result = 0;
-
-  if (!enif_is_list(env, list)) {
-    result = enif_make_badarg(env);
-    goto cleanup_do_edogstatsd_udp_send_lines;
-  }
+  int sent_count;
 
   worker_space = get_current_thread_worker_space();
   if (!worker_space) {
-    result = enif_make_tuple2(env, atom_error, atom_cannot_allocate_worker_space);
-    goto cleanup_do_edogstatsd_udp_send_lines;
+    return enif_make_tuple2(env, atom_error, atom_cannot_allocate_worker_space);
   }
   buffer = worker_space->buffer;
 
-  while(enif_get_list_cell(env, list, &current_io_data, &tail)) {
-    list = tail;
-
-    if (!enif_inspect_iolist_as_binary(env, current_io_data, buffer)) {
-      send_error = enif_make_tuple2(env, atom_not_an_io_data, current_io_data);
-      errors_list = enif_make_list_cell(env, send_error, errors_list);
-      continue;
-    }
-
-    sent_count = sendto(worker_space->socket, buffer->data, buffer->size, 0,
-                        (struct sockaddr*) &edogstatsd_server, sockaddr_in_size);
-    if (sent_count != buffer->size) {
-      send_error = enif_make_tuple4(env, atom_error, atom_send_failed, sent_count, buffer->size);
-      errors_list = enif_make_list_cell(env, send_error, errors_list);
-    }
+  if (!enif_inspect_iolist_as_binary(env, argv[0], buffer)) {
+    return enif_make_badarg(env);
   }
 
-cleanup_do_edogstatsd_udp_send_lines:
-  if (!enif_has_pending_exception(env, NULL) && !result) {
-    if (enif_is_empty_list(env, errors_list)) {
-      result = atom_ok;
-    } else {
-      // there were errors
-      result = enif_make_tuple2(env, atom_error, errors_list);
-    }
+  sent_count = sendto(worker_space->socket, buffer->data, buffer->size, 0,
+                      (struct sockaddr*) &edogstatsd_server, sockaddr_in_size);
+  if (sent_count != buffer->size) {
+    ERL_NIF_TERM error_tuple = enif_make_tuple3(env, atom_send_failed, sent_count, buffer->size);
+    return enif_make_tuple2(env, atom_error, error_tuple);
   }
 
-  return result;
+  return atom_ok;
 }
 
-static ERL_NIF_TERM edogstatsd_udp_send_lines(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM edogstatsd_udp_send_line(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
   switch(server_info_status) {
     case SERVER_INFO_SET:
-      return do_edogstatsd_udp_send_lines(env, argc, argv);
+      return do_edogstatsd_udp_send_line(env, argc, argv);
     case SET_SERVER_INFO_FAILED:
       return enif_make_tuple2(env, atom_error, atom_set_server_info_failed);
     case NO_SERVER_INFO:
@@ -240,7 +215,6 @@ static int edogstatsd_udp_load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM lo
   atom_error                        = enif_make_atom(env, "error");
   atom_set_server_info_failed       = enif_make_atom(env, "set_server_info_failed");
   atom_must_set_server_info_first   = enif_make_atom(env, "must_set_server_info_first");
-  atom_not_an_io_data               = enif_make_atom(env, "not_an_io_data");
   atom_send_failed                  = enif_make_atom(env, "send_failed");
   atom_cannot_allocate_worker_space = enif_make_atom(env, "cannot_allocate_worker_space");
 
@@ -275,7 +249,7 @@ static void edogstatsd_udp_unload(ErlNifEnv* env, void* priv_data)
 
 static ErlNifFunc edogstatsd_udp_nif_funcs[] = {
   {"set_server_info",   2, edogstatsd_udp_set_server_info},
-  {"send_lines",        1, edogstatsd_udp_send_lines},
+  {"send_line",         1, edogstatsd_udp_send_line},
   {"current_pool_size", 0, edogstatsd_udp_current_pool_size}
 };
 
