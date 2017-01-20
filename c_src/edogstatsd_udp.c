@@ -10,8 +10,6 @@
 
 #define BUFFER_SIZE 4096
 #define MAX_IP_SIZE 64
-#define INITIAL_POOL_MAX_SIZE 4
-#define OLD_POOL_GRACE_PERIOD 1800 // in seconds, i.e. half an hour
 
 static ERL_NIF_TERM atom_ok;
 static ERL_NIF_TERM atom_error;
