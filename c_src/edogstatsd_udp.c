@@ -1,6 +1,5 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -80,20 +79,20 @@ void free_worker_space(worker_space_t* worker_space)
   if (worker_space) {
     if (worker_space->buffer) {
       enif_release_binary(worker_space->buffer);
-      free(worker_space->buffer);
+      enif_free(worker_space->buffer);
     }
 
     if (worker_space->socket >= 0) {
       close(worker_space->socket);
     }
 
-    free(worker_space);
+    enif_free(worker_space);
   }
 }
 
 worker_space_t* alloc_worker_space(ErlNifTid self)
 {
-  worker_space_t* worker_space = (worker_space_t*) malloc(sizeof(worker_space_t));
+  worker_space_t* worker_space = (worker_space_t*) enif_alloc(sizeof(worker_space_t));
   if (!worker_space) {
     return NULL;
   }
@@ -104,12 +103,12 @@ worker_space_t* alloc_worker_space(ErlNifTid self)
   worker_space->next = NULL;
 
   // allocate the buffer
-  worker_space->buffer = (ErlNifBinary*) malloc(sizeof(ErlNifBinary));
+  worker_space->buffer = (ErlNifBinary*) enif_alloc(sizeof(ErlNifBinary));
   if (!worker_space->buffer) {
     goto cleanup_failed_alloc_worker_space;
   }
   if (!enif_alloc_binary(BUFFER_SIZE, worker_space->buffer)) {
-    free(worker_space->buffer);
+    enif_free(worker_space->buffer);
     worker_space->buffer = NULL;
     goto cleanup_failed_alloc_worker_space;
   }
@@ -123,7 +122,7 @@ worker_space_t* alloc_worker_space(ErlNifTid self)
   return worker_space;
 
 cleanup_failed_alloc_worker_space:
-  free(worker_space);
+  free_worker_space(worker_space);
   return NULL;
 }
 
