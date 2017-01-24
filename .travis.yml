@@ -1,0 +1,10 @@
+language: erlang
+sudo: false
+otp_release:
+  - 18.2
+  - 19.2
+script:
+  # where we keel the dialyzer's base PLTs
+  - mkdir -p ~/.concrete_dialyzer_plts
+  - make get-rebar all_but_dialyzer
+  - make get-rebar dialyzer
