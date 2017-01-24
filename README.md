@@ -1,4 +1,5 @@
-[![Build Status](https://circleci.com/gh/wk8/erlang-dogstatsd.svg?&style=shield&circle-token=998f46856568b9b3c610922986bfb3a655c5ba3f)](https://circleci.com/gh/wk8/erlang-dogstatsd/tree/master)
+[![Circle Build Status](https://circleci.com/gh/wk8/erlang-dogstatsd.svg?&style=shield&circle-token=998f46856568b9b3c610922986bfb3a655c5ba3f)](https://circleci.com/gh/wk8/erlang-dogstatsd/tree/master)
+[![Travis Build Status](https://travis-ci.org/wk8/erlang-dogstatsd.svg?branch=master)](https://travis-ci.org/wk8/erlang-dogstatsd)
 
 # Another edogstatsd client for Erlang
 
