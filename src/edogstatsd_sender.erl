@@ -13,7 +13,7 @@ send_metrics(Type, MetricDataList) ->
     if_enabled(fun(Config) ->
         Lines = [build_metric_line(Type, normalize_metric_data(MetricData), Config)
              || MetricData <- MetricDataList],
-        edogstatsd_udp:send_lines(Lines)
+        send_lines(Lines)
     end).
 
 -spec send_event(edogstatsd:event_title(), edogstatsd:event_text(), edogstatsd:event_type(), edogstatsd:event_priority(), edogstatsd:event_tags())
@@ -21,7 +21,7 @@ send_metrics(Type, MetricDataList) ->
 send_event(Title, Text, Type, Priority, Tags) ->
     if_enabled(fun(Config) ->
         Line = build_event_line(Title, Text, Type, Priority, Tags, Config),
-        edogstatsd_udp:send_lines([Line])
+        send_lines([Line])
     end).
 
 %%% Private helpers
@@ -116,6 +116,23 @@ build_tag_line(Tags, #config{tags=GlobalTags}) ->
               end,
               [],
               maps:merge(GlobalTags, Tags)).
+
+send_lines(Lines) ->
+    Errors = lists:foldl(
+        fun(Line, CurrentErrors) ->
+            case edogstatsd_udp:send_line(Line) of
+                ok -> CurrentErrors;
+                {error, Why} -> [{Line, Why} | CurrentErrors]
+            end
+        end,
+        [],
+        Lines
+    ),
+
+    case Errors =:= [] of
+        true -> ok;
+        false -> {error, Errors}
+    end.
 
 %%% Tests
 -ifdef(TEST).

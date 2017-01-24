@@ -2,10 +2,8 @@
 
 -export([
     set_server_info/2,
-    send_lines/1,
-    current_pool_size/0,
-    allocated_worker_spaces_count/0,
-    destroyed_worker_spaces_count/0
+    send_line/1,
+    current_pool_size/0
 ]).
 
 -on_load(init/0).
@@ -14,11 +12,9 @@
 
 set_server_info(_ServerIpString, _ServerPort) -> ?NOT_LOADED.
 
-send_lines(_LinesAsIOLists) -> ?NOT_LOADED.
+send_line(_LineAsIOData) -> ?NOT_LOADED.
 
 current_pool_size() -> ?NOT_LOADED.
-allocated_worker_spaces_count() -> ?NOT_LOADED.
-destroyed_worker_spaces_count() -> ?NOT_LOADED.
 
 %%% Private helpers
 
@@ -43,7 +39,7 @@ not_loaded(Line) ->
 
 basic_send_test_() ->
     with_setup(fun(Socket) ->
-        ok = send_lines([["hello", [[" "]], <<"world">>]]),
+        ok = send_line(["hello", [[" "]], <<"world">>]),
 
         {UdpMessages, OtherMessages} = receive_messages(Socket, 1),
 
@@ -83,7 +79,7 @@ parallel_send_test_() ->
                     lists:foreach(
                         fun(IOListMsg) ->
                             timer:sleep(rand:uniform(50)),
-                            ok = send_lines([IOListMsg])
+                            ok = send_line(IOListMsg)
                         end,
                         IOListMsgs
                     ),
@@ -105,31 +101,32 @@ parallel_send_test_() ->
         {ActualUdpMessages, ActualOtherMessages} = receive_messages(Socket, 4 * ProcessCount),
 
         CurrentPoolSize = edogstatsd_udp:current_pool_size(),
-        AllocatedWorkerSpacesCount = edogstatsd_udp:allocated_worker_spaces_count(),
 
         [
          assert_sets_equal(udp_messages, ExpectedUdpMessages, ActualUdpMessages),
          assert_sets_equal(other_messages, ExpectedOtherMessages, ActualOtherMessages),
-         %% we should have created at least one worker space, and
-         %% it/they should be back in the pool by now
-         ?_assert(AllocatedWorkerSpacesCount > 0),
-         ?_assertEqual(AllocatedWorkerSpacesCount, CurrentPoolSize)
+         %% we should have created at least one worker space
+         ?_assert(CurrentPoolSize > 0)
         ]
     end, 18126).
 
-error_send_test_() ->
+send_binary_test_() ->
     with_setup(fun(Socket) ->
-        Result = send_lines([i_aint_an_io_data, ["hey you"], 42, <<"out there in the cold">>]),
+        ok = send_line(<<"hello world 2">>),
 
-        {UdpMessages, OtherMessages} = receive_messages(Socket, 2),
+        {UdpMessages, OtherMessages} = receive_messages(Socket, 1),
 
         [
-         ?_assertEqual({error, [{not_an_io_data, 42},
-                                {not_an_io_data, i_aint_an_io_data}]}, Result),
-         ?_assertEqual(["hey you", "out there in the cold"], UdpMessages),
+         ?_assertEqual(["hello world 2"], UdpMessages),
          ?_assertEqual([], OtherMessages)
         ]
     end, 18127).
+
+bad_arg_test_() ->
+    with_setup(fun(_Socket) ->
+        [?_assertError(badarg, send_line(BadLine))
+         || BadLine <- [i_aint_an_io_data, 42, erlang:make_ref(), erlang:self()]]
+    end, 18128).
 
 with_setup(TestFun, Port) ->
     {setup,
