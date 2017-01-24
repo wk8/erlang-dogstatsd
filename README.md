@@ -5,7 +5,7 @@
 
 edogstatsd is Datadog's extension of StatsD. It adds tags to the metrics.
 
-It is heavily inspired from [this other edogstatsd client for Erlang](https://github.com/WhoopInc/edogstatsde); the main difference is that they use a pool of workers to actually send UDP packets to edogstatsd, [which can become a bottleneck](https://github.com/WhoopInc/edogstatsde/issues/26). This repo, on the other hand, uses a native C extension ([a.k.a. a NIF](http://erlang.org/doc/tutorial/nif.html)) to send UDP packets directly from the erlang processes generating the metrics, which results in much better performance.
+It is heavily inspired from [this other edogstatsd client for Erlang](https://github.com/WhoopInc/dogstatsde); the main difference is that they use a pool of workers to actually send UDP packets to edogstatsd, [which can become a bottleneck](https://github.com/WhoopInc/dogstatsde/issues/26). This repo, on the other hand, uses a native C extension ([a.k.a. a NIF](http://erlang.org/doc/tutorial/nif.html)) to send UDP packets directly from the erlang processes generating the metrics, which results in much better performance.
 
 ## Configure
 
